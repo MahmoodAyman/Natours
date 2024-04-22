@@ -5,3 +5,4 @@
 /httpRequests/
 # ignoring node modules folder and env config
 **/node_modules
+/config.env.local
