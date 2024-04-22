@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(express.static(`${__dirname}/public`));
 // create our middleware function
 app.use((request, response, next) => {
-  console.log('Hello from the middleware');
+  // console.log('Hello from the middleware');
   next();
 });
 
