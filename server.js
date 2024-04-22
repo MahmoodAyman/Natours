@@ -5,11 +5,15 @@ dotenv.config({ path: './config.env' });
 
 const DB = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);
 
-mongoose.connect(DB , {
+mongoose.connect(DB, {
   useNewUrlParser: true,
   useCreateIndex: true,
-  useFindAndModify: false,
-}).then( () => console.log(`DB Connected successfully.`));
+  useFindAndModify: false
+}).then(() => console.log(`DB Connected successfully.`));
+
+
+//create Schema
+
 
 const port = process.env.port;
 
