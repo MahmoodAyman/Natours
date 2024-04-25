@@ -1,89 +1,27 @@
-// const fs = require('fs');
-
 const Tour = require('./../models/tourModel');
 
-// const tours = JSON.parse(fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`, 'utf-8'));
+const APIFeatures = require('./../utils/apiFeatures');
 
-
-// function to check id instead of repeating yourself but not with MongoDB
-
-// exports.checkID = (req, res, next, val) => {
-//   if (val * 1 > tours.length) {
-//     return res.status(404).json({
-//       status: 'fail',
-//       message: 'No tours with this ID found'
-//     });
-//   }
-//   next();
-// };
-
-// exports.checkBody = (req, res, next) => {
-//   const tour = req.body;
-//   if (!req.body.name || !req.body.price) {
-//     return res.status(400).json({
-//       status: 'fail',
-//       message: 'No Name or Price'
-//     });
-//   }
-//   console.log(tour);
-//   console.log('hello from checkBody');
-//
-//   next();
-// };
+exports.aliasTopTours = (request, response, next) => {
+  request.query.limit = 5;
+  request.query.sort = '-ratingsAverage,price';
+  request.query.fields = 'name,price,ratingsAverage,difficulty';
+  next();
+};
 
 exports.getAllTours = async (request, response) => {
   try {
-    // console.log(request.query);
-
-    /* 1) Filtering */
-    // const tours = await Tour.find({
-    //   duration : 5,
-    //   difficulty : "easy",
-    // });
-
-    /* Using Mongoose methods */
-    // const tours = await Tour.find()
-    //   .where('duration').equals(request.query.duration)
-    //   .where('difficulty').equals(request.query.difficulty);
-    const queryObj = { ...request.query };
-    const excludedFields = ['page', 'sort', 'limit', 'fields'];
-    excludedFields.forEach(element => delete queryObj[element]);
-    // console.log(request.query , queryObj);
-
-    /* Advanced Filtering */
-    // { difficulty : 'easy , duration : {$gte : 5 } }
-    // { difficulty: 'easy', duration : { gte: '5' } }
-
-    // first step - stringify the query
-    let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, matched =>
-      // callback function to return new string
-      `$${matched}`);
-
-    // console.log(JSON.parse(queryStr));
-
-    let query = Tour.find(JSON.parse(queryStr));
-    // Sorting
-    if (request.query.sort) {
-      query = query.sort(request.query.sort);
-    }
-
-    /* Pagination */
-    // define by default number of results in a page
-    const page = request.query.page * 1 || 1; // to convert string to number or choose default page 1
-    const limit = request.query.limit * 1 || 100;
-    const skipValues = ((page - 1) * limit) ;
-
-    query = query.skip(skipValues).limit(limit);
-    // throw error when user access not exist page
-    if(request.query.page){
-      // return a promise contains number of documents in the collection
-      const numTours = await Tour.countDocuments();
-      if(skipValues >= numTours) throw new Error('This page does not Exist !!!');
-    }
-
     // the response
-    const  tours = await query;
+
+    // API
+
+    const features = new APIFeatures(Tour.find(), request.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+    // start response
+    const tours = await features.query;
     response.status(200).json({
       status: 'success',
       results: tours.length,
@@ -91,13 +29,19 @@ exports.getAllTours = async (request, response) => {
         tours
       }
     });
-  } catch {
+  } catch (err) {
+    console.log(request.query);
     response.status(400).json({
       status: 'fail',
-      message: 'No Tours Found'
+      message: err
     });
   }
 };
+
+
+// use class
+
+
 exports.createTour = async (request, response) => {
   try {
     const newTour = await Tour.create(request.body);

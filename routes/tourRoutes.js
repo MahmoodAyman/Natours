@@ -6,6 +6,7 @@ const tourController = require('./../controllers/tourController');
 // router.param('/');
 // create a checkBody middleware
 
+router.route('/top-5-cheap').get(tourController.aliasTopTours , tourController.getAllTours)
 router
   .route('/')
   .get(tourController.getAllTours)
