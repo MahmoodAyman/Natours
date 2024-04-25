@@ -33,7 +33,57 @@ const Tour = require('./../models/tourModel');
 
 exports.getAllTours = async (request, response) => {
   try {
-    const tours = await Tour.find();
+    // console.log(request.query);
+
+    /* 1) Filtering */
+    // const tours = await Tour.find({
+    //   duration : 5,
+    //   difficulty : "easy",
+    // });
+
+    /* Using Mongoose methods */
+    // const tours = await Tour.find()
+    //   .where('duration').equals(request.query.duration)
+    //   .where('difficulty').equals(request.query.difficulty);
+    const queryObj = { ...request.query };
+    const excludedFields = ['page', 'sort', 'limit', 'fields'];
+    excludedFields.forEach(element => delete queryObj[element]);
+    // console.log(request.query , queryObj);
+
+    /* Advanced Filtering */
+    // { difficulty : 'easy , duration : {$gte : 5 } }
+    // { difficulty: 'easy', duration : { gte: '5' } }
+
+    // first step - stringify the query
+    let queryStr = JSON.stringify(queryObj);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, matched =>
+      // callback function to return new string
+      `$${matched}`);
+
+    // console.log(JSON.parse(queryStr));
+
+    let query = Tour.find(JSON.parse(queryStr));
+    // Sorting
+    if (request.query.sort) {
+      query = query.sort(request.query.sort);
+    }
+
+    /* Pagination */
+    // define by default number of results in a page
+    const page = request.query.page * 1 || 1; // to convert string to number or choose default page 1
+    const limit = request.query.limit * 1 || 100;
+    const skipValues = ((page - 1) * limit) ;
+
+    query = query.skip(skipValues).limit(limit);
+    // throw error when user access not exist page
+    if(request.query.page){
+      // return a promise contains number of documents in the collection
+      const numTours = await Tour.countDocuments();
+      if(skipValues >= numTours) throw new Error('This page does not Exist !!!');
+    }
+
+    // the response
+    const  tours = await query;
     response.status(200).json({
       status: 'success',
       results: tours.length,
