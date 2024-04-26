@@ -43,17 +43,13 @@ const tourSchema = new mongoose.Schema({
     type: String,// leave the image in the file system and just use the name of it
     required: [true, 'A tour must have an image']
   },
-  images: { // images for guids and other staff
-    type: [String],
-    createdAt: {
-      type: Date,
-      default: Date.now()
-    },
-    startDates: [Date]
-  }
+  images: [String],
+  startDates: [Date]
 });
 const Tour = mongoose.model('Tour', tourSchema);
 module.exports = Tour;
+
+
 // const testTour = new tourModel({
 //   name: 'The Forest Hiker',
 //   rating: 4.7,
