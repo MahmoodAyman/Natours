@@ -44,8 +44,22 @@ const tourSchema = new mongoose.Schema({
     required: [true, 'A tour must have an image']
   },
   images: [String],
-  startDates: [Date]
+  startDates: [Date],
+} , {
+  toJSON : {virtuals : true},
+  toObject : {virtuals : true}
 });
+
+
+  // virtual properties :  fields defined to schema but not persisted (not be saved into database) in order to save space
+  // fields to convert or calculated data
+  // can't use it in query because this actually not part of database
+tourSchema.virtual('durationWeeks').get(function (){
+  // regular function and not an arrow function because we want this keyword to point to current document
+  return this.duration / 7; // calculate days and convert it into weeks
+});
+
+
 const Tour = mongoose.model('Tour', tourSchema);
 module.exports = Tour;
 
