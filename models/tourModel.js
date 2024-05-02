@@ -17,7 +17,11 @@ const tourSchema = new mongoose.Schema({
   },
   difficulty: {
     type: String,
-    required: [true, 'A tour must have a difficulty']
+    required: [true, 'A tour must have a difficulty'],
+    enum: {
+      values: ['easy', 'medium', 'difficult'],
+      message: 'Difficulty is easy , medium, or difficult'
+    }
   },
   ratingsQuantity: {
     type: Number,
@@ -25,13 +29,23 @@ const tourSchema = new mongoose.Schema({
   },
   ratingsAverage: {
     type: Number,
-    default: 4.5
+    default: 4.5,
+    min: [1, 'Rating must be above 1.0'],
+    max: [5, 'Rating must be below 5.0']
   },
   price: {
     type: Number,
     required: [true, 'A tour must have a price']
   },
-  priceDiscount: Number,
+  priceDiscount: {
+    type: Number,
+    validate: {
+      validator: function(val) {
+        return this.price > val;
+      },
+      message: 'discount Price must be below Regular price'
+    }
+  },
   summary: {
     type: String,
     trim: true,// remove all white strings in the beginning and end of the string
@@ -70,6 +84,7 @@ tourSchema.pre('save', function(next) {
   this.slug = slugify(this.name, { lower: true });
   next();
 });
+
 // executed after all middleware function executed
 tourSchema.post('save', function(doc, next) {
   console.log(doc);
@@ -86,26 +101,11 @@ tourSchema.pre(/^find/, function(next) {
   next();
 });
 
-tourSchema.post(/^find/ , function(docs , next){
+tourSchema.post(/^find/, function(docs, next) {
   // console.log(`Query took ${Date.now() - this.start} MS`);
   console.log(docs);
   next();
-})
+});
 
 const Tour = mongoose.model('Tour', tourSchema);
 module.exports = Tour;
-
-
-// const testTour = new tourModel({
-//   name: 'The Forest Hiker',
-//   rating: 4.7,
-//   price: 497,
-//   description: 'Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.\nLorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.',
-//   image: 'tour-1-cover.jpg'
-// });
-//
-// testTour.save().then(doc =>{
-//   console.log(doc);
-// }).catch(err=>{
-//   console.log(`Error ${err}`);
-// })
