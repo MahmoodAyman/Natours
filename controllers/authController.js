@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 const User = require('./../models/userModel');
@@ -7,25 +8,30 @@ const sendEmail = require('./../utils/emial');
 
 const signToken = (id) => {
   return jwt.sign({ id: id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
+    expiresIn: process.env.JWT_EXPIRES_IN
   });
 };
+
+const createSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+  res.status(statusCode).json({
+    status: 'success',
+    token,
+    data: {
+      user
+    }
+  });
+};
+
 // signup and then legged user in directly
 exports.signup = catchAsync(async (req, res) => {
   const newUser = await User.create({
     name: req.body.name,
     email: req.body.email,
     password: req.body.password,
-    passwordConfirm: req.body.passwordConfirm,
+    passwordConfirm: req.body.passwordConfirm
   });
-  const token = signToken(newUser._id);
-  res.status(201).json({
-    status: 'success',
-    token,
-    data: {
-      user: newUser,
-    },
-  });
+  createSendToken(newUser, 201, res);
 });
 
 //login user
@@ -46,11 +52,7 @@ exports.login = catchAsync(async (req, res, next) => {
     );
   }
   //3) send JWT to client
-  const token = signToken(user._id);
-  res.status(200).json({
-    status: 'success',
-    token,
-  });
+  createSendToken(user, 200, res);
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
@@ -129,12 +131,12 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     await sendEmail({
       email: user.email,
       subject: 'Your password reset token (valid for 10 min)',
-      message,
+      message
     });
 
     res.status(200).json({
       status: 'success',
-      message: 'Token sent to email!',
+      message: 'Token sent to email!'
     });
   } catch (err) {
     user.passwordResetToken = undefined;
@@ -147,4 +149,40 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     );
   }
 });
-exports.resetPassword = (req, res, next) => {};
+exports.resetPassword = catchAsync(async (req, res, next) => {
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(req.params.token)
+    .digest('hex');
+  console.log(hashedToken);
+  const user = await User.findOne({ passwordResetToken: hashedToken, passwordResetExpires: { $gt: Date.now() } });
+  console.log(user);
+  if (!user) {
+    return next(new AppError('Token is Invalid or has expired!', 400));
+  }
+
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+
+  createSendToken(user, 200, res);
+});
+
+
+// update password when login
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  // Get user
+  const user = await User.findById(req.user.id).select('+password');
+  // check if the current password is correct
+  if (!await user.correctPassword(req.body.passwordConfirm, user.password)) {
+    next(new AppError('your Password is wrong!', 401));
+  }
+  // update password
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
+  // logged in with new password
+  createSendToken(user, 200, res);
+});
